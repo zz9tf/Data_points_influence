@@ -64,6 +64,6 @@ model = Model(
     }
 )
 
-custom_method.experience_get_correlation(model=model, configs=configs)
-# custom_method.exprience_remove_all_negtive(model=model, configs=configs, eva_id=0)
+# custom_method.experience_get_correlation(model=model, configs=configs)
+# custom_method.exprience_remove_all_negtive(model=model, configs=configs)
 # custom_method.experience_predict_distribution(model, configs, precent_to_keep=0.7)
