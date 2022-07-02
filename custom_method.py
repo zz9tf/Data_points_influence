@@ -1,8 +1,4 @@
-from cmath import inf
-from email.mime import base
-from math import remainder
-from this import d
-from scipy.fftpack import diff
+from sympy import per
 import torch
 import numpy as np
 from scipy.stats import pearsonr
@@ -22,6 +18,8 @@ def hessian(model):
         return sec_grads
 
 def inverse_matrix(matrix):
+    if np.linalg.det(matrix) == 0:
+        return np.linalg.pinv(matrix)
     inverse_matrix = np.identity(len(matrix))
     for I_col in range(len(matrix)):
         inverse_matrix[I_col, :] /= matrix[I_col, I_col]
@@ -151,10 +149,9 @@ def experience_get_correlation(model, configs, eva_set_type='test', eva_id=None)
 def exprience_remove_all_negtive(model, configs, eva_set_type='test', eva_id=None, based_pred=True):
     assert eva_set_type in ['train', 'test', 'valid']
 
-    diffs = [-1]
+    diffs = np.array([-1])
     samples_diff_dic = {}
-    while len([dif for dif in diffs if dif <= 0]) > 0:
-        diffs = []
+    while len(diffs<=0) > 0:
         # get original checkpoint
         model.train(
                 num_epoch=configs["num_epoch_train"],
@@ -170,42 +167,48 @@ def exprience_remove_all_negtive(model, configs, eva_set_type='test', eva_id=Non
                 test_x, test_y = model.np2tensor(model.dataset['test'].get_by_idxs(eva_id))
             ori_loss = model.loss_fn(model.model(test_x), test_y).item()
         
-        for inf_id in range(model.dataset['train'].num_examples):
-            print("processing point {}/{}".format(inf_id+1, model.dataset['train'].num_examples))
+        diffs = np.array([])
+        for inf_id in range(model.dataset['train'].x.shape[0]):
+            print("Remain {} data points".format(model.dataset['train'].num_examples))
+            print("processing point {}/{}".format(inf_id+1, model.dataset['train'].x.shape[0]))
             if based_pred:
                 if eva_id is None:
-                    diffs.append(-predict_on_batch(
+                    diffs = np.append(diffs, -predict_on_batch(
                         model=model,
                         eva_set_type=eva_set_type,
                         inf_id=inf_id
                     ))
                 else:
-                    diffs.append(-predict_on_single(
+                    diffs = np.append(diffs, -predict_on_single(
                         model=model,
                         eva_id=eva_id,
                         eva_set_type=eva_set_type,
                         inf_id=inf_id))
             else:
-                remain_ids = np.setdiff1d(model.remain_ids, np.array([inf_id]))
-                model.reset_train_dataset(remain_ids)
-                model.train(
-                    num_epoch=configs["num_epoch_train"],
-                    load_checkpoint=configs["load_checkpoint"],
-                    save_checkpoints=configs["save_checkpoint"],
-                    verbose=False,
-                    checkpoint_name="eva{}_inf{}_num{}".format(eva_id, inf_id, model.dataset['train'].num_examples),
-                    plot=configs["plot"]
-                )
-                re_loss = model.loss_fn(model.model(test_x), test_y).item()
-                diffs.append(re_loss - ori_loss)
+                if inf_id in remain_ids:
+                    remain_ids = np.setdiff1d(model.remain_ids, np.array([inf_id]))
+                    model.reset_train_dataset(remain_ids)
+                    model.train(
+                        num_epoch=configs["num_epoch_train"],
+                        load_checkpoint=configs["load_checkpoint"],
+                        save_checkpoints=configs["save_checkpoint"],
+                        verbose=False,
+                        checkpoint_name="eva{}_inf{}_num{}".format(eva_id, inf_id, model.dataset['train'].num_examples),
+                        plot=configs["plot"]
+                    )
+                    re_loss = model.loss_fn(model.model(test_x), test_y).item()
+                    diffs = np.append(diffs, (re_loss - ori_loss))
+                else:
+                    diffs = np.append(diffs, np.nan)
             if inf_id in samples_diff_dic.keys():
-                samples_diff_dic[inf_id].append(diffs[i])
+                samples_diff_dic[inf_id].append(diffs[inf_id])
             else:
-                samples_diff_dic[inf_id] = [diffs[i]]
-        diffs_sorted_id = np.argsort(diffs)
-        print("remove point {}".format(model.remain_ids[diffs_sorted_id][0]))
-        model.reset_train_dataset(model.remain_ids[diffs_sorted_id][1:])
-        diffs = diffs[diffs_sorted_id][1:]
+                samples_diff_dic[inf_id] = [diffs[inf_id]]
+        copy_diffs = diffs[model.remain_ids]
+        model.remain_ids = model.remain_ids[np.argsort(copy_diffs)]
+        print("remove point {}".format(model.remain_ids[0]))
+        model.reset_train_dataset(model.remain_ids[1:])
+        diffs = diffs[model.remain_ids]
     np.savez(
         'plot_result/remove_all_negtive-%s-%s.npz' % (configs['model'], configs['dataset']),
         ids=model.remain_ids,
@@ -214,7 +217,7 @@ def exprience_remove_all_negtive(model, configs, eva_set_type='test', eva_id=Non
 
 def experience_predict_distribution(model, configs, precent_to_keep=1.0, epoch=100, eva_set_type='test'):
     all_select_ids = []
-    point_diffs = {}
+    samples_diff_dic = {}
     remain_num = int(model.dataset['train'].x.shape[0]*precent_to_keep)
     for i in range(epoch):
         remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
@@ -226,11 +229,35 @@ def experience_predict_distribution(model, configs, precent_to_keep=1.0, epoch=1
             checkpoint_name="rand{}_num{}".format(i, remain_num)
         )
         for inf_id in range(model.dataset['train'].x.shape[0]):
-            if inf_id not in point_diffs.keys():
-                point_diffs[inf_id] = [predict_on_batch(model, eva_set_type, inf_id)]
+            if inf_id not in samples_diff_dic.keys():
+                samples_diff_dic[inf_id] = [predict_on_batch(model, eva_set_type, inf_id)]
             else:
-                point_diffs[inf_id].append(predict_on_batch(model, eva_set_type, inf_id))
+                samples_diff_dic[inf_id].append(predict_on_batch(model, eva_set_type, inf_id))
     np.savez(
         'plot_result/rand{}-{}-{}.npz'.format(precent_to_keep, configs['model'], configs['dataset']),
-        point_diffs=point_diffs
+        point_diffs=samples_diff_dic
+    )
+
+def experience_possible_better(model, configs, precent_to_keep=1.0, epoch=100, eva_set=['test']):
+    for eva_set_type in eva_set:
+        assert eva_set_type in ['train', 'test', 'valid']
+    all_select_ids = []
+    remain_num = int(model.dataset['train'].x.shape[0]*precent_to_keep)
+    performance = [[]]*len(eva_set)
+    for i in range(epoch):
+        remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
+        while remain_ids in all_select_ids:
+            remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
+        model.reset_train_dataset(remain_ids)
+        model.train(
+            num_epoch=configs['num_epoch_train'],
+            checkpoint_name='rand{}_num{}'.format(i, remain_num)
+        )
+        for i, eva_type in enumerate(eva_set):
+            eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+            eva_diff = model.model(eva_x) - eva_y
+            performance[i].append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+    np.savez(
+        'plot_result/perform_better{}-{}-{}.npz'.format(precent_to_keep, configs['model'], configs['dataset']),
+        performance=performance
     )

@@ -17,7 +17,7 @@ def load_movielens(dir):
     validation = Dataset(valid_input, valid_output)
     test = Dataset(test_input, test_output)
 
-    return {"train": train, "validation": validation, "test": test}
+    return {"train": train, "valid": validation, "test": test}
 
 
 def load_yelp(dir):
@@ -36,7 +36,7 @@ def load_yelp(dir):
     validation = Dataset(valid_input, valid_output)
     test = Dataset(test_input, test_output)
 
-    return {"train": train, "validation": validation, "test": test}
+    return {"train": train, "valid": validation, "test": test}
 
 
 class Dataset(object):

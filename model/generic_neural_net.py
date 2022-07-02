@@ -47,14 +47,16 @@ class Model():
         if os.path.exists(self.result_dir) is False:
             os.makedirs(self.result_dir)
         self.model_name = basic_configs.pop("model_name")
+        print(self.__str__(self.model.__str__()))
 
     def __str__(self, details):
-        return "Model name: {}\n".format(self.model_name) \
-               + details \
-               + "weight decay: {}\n".format(self.weight_decay) \
+        return "Model name: {}\n".format(self.model_name)\
+               + "\nweight decay: {}\n".format(self.weight_decay) \
                + "number of training examples: {}\n".format(self.dataset["train"].num_examples) \
                + "number of testing examples: {}\n".format(self.dataset["test"].num_examples) \
-               + "-------------------------------\n"
+               + "number of valid examples: {}\n".format(self.dataset["valid"].num_examples) \
+               + details\
+               + "\n-------------------------------\n"
 
     def reset_train_dataset(self, remain_ids=None):
         if remain_ids is None:
@@ -146,9 +148,6 @@ class Model():
 
             if verbose and epoch % 1000 == 0:
                 print("Epoch {}: loss = {:.8f}".format(epoch, train_loss.item()))
-            
-            if start > 0 and train_loss.item() > self.performance["train_loss"][-1]:
-                self.optimizer.param_groups[0]['lr'] = self.optimizer.param_groups[0]['lr']/10
 
             self.performance["train_loss"].append(train_loss.item())
             self.performance["test_loss"].append(test_loss.item())

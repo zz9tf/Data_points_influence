@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from load_data import load_movielens, load_yelp
 from model.generic_neural_net import Model
 import custom_method
@@ -6,13 +7,13 @@ import custom_method
 configs = {
     # detaset
     "dataset": "movielens",  # name of dataset: movielens or yelp
-    "datapath": "./subdata",  # the path of datasets
+    "datapath": "./data",  # the path of datasets
     # model configs
     "model": "lr",  # modeltype:MF or NCF or lr
     "embedding_size": 2,  # embedding size
     # train configs
-    "batch_size": 512,  # 3020,  # the batch_size for training or predict, None for not to use batch
-    "lr": 1e-4,  # initial learning rate for training MF or NCF model
+    "batch_size": 4096,  # 3020,  # the batch_size for training or predict, None for not to use batch
+    "lr": 1e-10,  # initial learning rate for training MF or NCF model
     "weight_decay": 1e-2,  # l2 regularization term for training MF or NCF model
     # train
     "num_epoch_train": 270000,  # training steps
@@ -67,3 +68,14 @@ model = Model(
 # custom_method.experience_get_correlation(model=model, configs=configs)
 # custom_method.exprience_remove_all_negtive(model=model, configs=configs)
 # custom_method.experience_predict_distribution(model, configs, precent_to_keep=0.7)
+model.train(num_epoch=configs['num_epoch_train'], checkpoint_name='ori', verbose=True)
+eva_set = ['valid']
+for eva_type in eva_set:
+    eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+    eva_diff = model.model(eva_x) - eva_y
+    print(torch.abs(eva_diff))
+    print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+for precent in [0.3, 0.1, 0.9, 0.7, 0.5]:
+    custom_method.experience_possible_better(model, configs, precent_to_keep=precent)
+
+
