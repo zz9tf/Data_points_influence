@@ -238,26 +238,37 @@ def experience_predict_distribution(model, configs, precent_to_keep=1.0, epoch=1
         point_diffs=samples_diff_dic
     )
 
-def experience_possible_better(model, configs, precent_to_keep=1.0, epoch=100, eva_set=['test']):
+def experience_possible_better(model, configs, percents, epoch=100, eva_set=['test']):
+    
     for eva_set_type in eva_set:
         assert eva_set_type in ['train', 'test', 'valid']
-    all_select_ids = []
-    remain_num = int(model.dataset['train'].x.shape[0]*precent_to_keep)
-    performance = [[]]*len(eva_set)
-    for i in range(epoch):
-        remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
-        while remain_ids in all_select_ids:
+    
+    model.train(num_epoch=configs['num_epoch_train'], checkpoint_name='ori', verbose=True)
+    for eva_type in eva_set:
+        eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+        eva_diff = model.model(eva_x) - eva_y
+        print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+    for percent_to_keep in percents:
+        all_select_ids = []
+        remain_num = int(model.dataset['train'].x.shape[0]*percent_to_keep)
+        performance = {}
+        for i in range(epoch):
             remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
-        model.reset_train_dataset(remain_ids)
-        model.train(
-            num_epoch=configs['num_epoch_train'],
-            checkpoint_name='rand{}_num{}'.format(i, remain_num)
+            while remain_ids in all_select_ids:
+                remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
+            model.reset_train_dataset(remain_ids)
+            model.train(
+                num_epoch=configs['num_epoch_train'],
+                checkpoint_name='rand{}_num{}'.format(i, remain_num)
+            )
+            for eva_type in eva_set:
+                eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+                eva_diff = model.model(eva_x) - eva_y
+                if eva_type in performance.keys():
+                    performance[eva_type].append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+                else:
+                    performance[eva_type] = [len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff)]
+        np.savez(
+            'plot_result/perform_better{}-{}-{}.npz'.format(percent_to_keep, configs['model'], configs['dataset']),
+            performance=performance
         )
-        for i, eva_type in enumerate(eva_set):
-            eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
-            eva_diff = model.model(eva_x) - eva_y
-            performance[i].append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
-    np.savez(
-        'plot_result/perform_better{}-{}-{}.npz'.format(precent_to_keep, configs['model'], configs['dataset']),
-        performance=performance
-    )

@@ -1,7 +1,7 @@
-from cProfile import label
-from dataclasses import dataclass
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 def read_diff():
     diff_dic = np.load("plot_result/result-lr-movielens.npz")
@@ -207,15 +207,21 @@ def read_adjust_violin2():
 
 def read_perform_better():
     performance = []
-    precents = ['0.9', '0.7', '0.5', '0.3', '0.1']
-    for precent in precents:
-        file_name = 'perform_better{}-lr-movielens.npz'.format(precent)
-        performance.append(np.load('plot_result/{}'.format(file_name), allow_pickle=True)['performance'][0])
+    percents = ['0.9', '0.7', '0.5', '0.3', '0.1']
+    for percent in percents:
+        file_name = 'perform_better{}-lr-movielens.npz'.format(percent)
+        file = np.load('plot_result/{}'.format(file_name), allow_pickle=True)['performance'].item()
+        for eva_type in file:
+            for acc in file[eva_type]:
+                performance.append([percent, acc, eva_type])
+    performance = pd.DataFrame(data=performance, columns=['remains precent', 'accuracy', 'data type'])
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    violin_plot(main_color='darkorange', line_color='k', scatter_color='white'
-                , all_data=performance, x_axis_labels=precents, ax=ax
-                , x_label="remains precent", y_label="accuracy", title="less data, better accuracy")
-    ax.axhline(y=0.21928807947019868, color='c', linestyle=':', label="accuracy with all data")
+    # violin_plot(main_color='darkorange', line_color='k', scatter_color='white'
+    #             , all_data=performance, x_axis_labels=precents, ax=ax
+    #             , x_label="remains precent", y_label="accuracy", title="less data, better accuracy")
+    ax = sns.violinplot(x="remains precent", y="accuracy", hue="data type", data=performance, palette="muted", split=True)
+    ax.axhline(y=0.2152317880794702, color='orangered', linestyle=':', label="accuracy with test data")
+    ax.axhline(y=0.21928807947019868, color='c', linestyle=':', label="accuracy with valid data")
     plt.legend()
     plt.show()
 

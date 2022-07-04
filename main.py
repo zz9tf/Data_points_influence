@@ -68,14 +68,6 @@ model = Model(
 # custom_method.experience_get_correlation(model=model, configs=configs)
 # custom_method.exprience_remove_all_negtive(model=model, configs=configs)
 # custom_method.experience_predict_distribution(model, configs, precent_to_keep=0.7)
-model.train(num_epoch=configs['num_epoch_train'], checkpoint_name='ori', verbose=True)
-eva_set = ['valid']
-for eva_type in eva_set:
-    eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
-    eva_diff = model.model(eva_x) - eva_y
-    print(torch.abs(eva_diff))
-    print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
-for precent in [0.3, 0.1, 0.9, 0.7, 0.5]:
-    custom_method.experience_possible_better(model, configs, precent_to_keep=precent)
+custom_method.experience_possible_better(model, configs, percents=[0.9, 0.7, 0.5, 0.3, 0.1], eva_set=['test', 'valid'])
 
 
