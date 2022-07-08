@@ -220,8 +220,8 @@ def read_perform_better():
     #             , all_data=performance, x_axis_labels=precents, ax=ax
     #             , x_label="remains precent", y_label="accuracy", title="less data, better accuracy")
     ax = sns.violinplot(x="remains precent", y="accuracy", hue="data type", data=performance, palette="muted", split=True)
-    ax.axhline(y=0.2152317880794702, color='orangered', linestyle=':', label="accuracy with test data")
-    ax.axhline(y=0.21928807947019868, color='c', linestyle=':', label="accuracy with valid data")
+    ax.axhline(y=0.8070544007076514, color='orangered', linestyle=':', label="accuracy with test data")
+    ax.axhline(y=0.8009950248756219, color='c', linestyle=':', label="accuracy with valid data")
     plt.legend()
     plt.show()
 

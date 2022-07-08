@@ -1,19 +1,20 @@
 import numpy as np
 import torch
-from load_data import load_movielens, load_yelp
+import os
+from load_data import load_data
 from model.generic_neural_net import Model
 import custom_method
 
 configs = {
     # detaset
-    "dataset": "movielens",  # name of dataset: movielens or yelp
-    "datapath": "./data",  # the path of datasets
+    "dataset": "census_income",  # name of dataset: movielens or yelp or census_income
+    "datapath": "data",  # the path of datasets
     # model configs
     "model": "lr",  # modeltype:MF or NCF or lr
     "embedding_size": 2,  # embedding size
     # train configs
     "batch_size": 4096,  # 3020,  # the batch_size for training or predict, None for not to use batch
-    "lr": 1e-10,  # initial learning rate for training MF or NCF model
+    "lr": 1e-4,  # initial learning rate for training MF or NCF model
     "weight_decay": 1e-2,  # l2 regularization term for training MF or NCF model
     # train
     "num_epoch_train": 270000,  # training steps
@@ -31,12 +32,8 @@ configs = {
     "percentage_to_keep": [1],  # A list of the percentage of training dataset to keep, ex: 0.3, 0.5, 0.7, 0.9
 }
 
-if configs['dataset'] == 'movielens':
-    dataset = load_movielens(configs["datapath"])
-elif configs['dataset'] == 'yelp':
-    dataset = load_yelp(configs["datapath"])
-else:
-    raise NotImplementedError
+
+dataset = load_data(os.path.join(configs['datapath'], configs['dataset']))
 
 num_users = int(np.max(dataset["train"].x[:, 0]) + 1)
 num_items = int(np.max(dataset["train"].x[:, 1]) + 1)
@@ -64,7 +61,6 @@ model = Model(
             configs['dataset'], configs['model'], configs['embedding_size'], configs['weight_decay'])
     }
 )
-
 # custom_method.experience_get_correlation(model=model, configs=configs)
 # custom_method.exprience_remove_all_negtive(model=model, configs=configs)
 # custom_method.experience_predict_distribution(model, configs, precent_to_keep=0.7)

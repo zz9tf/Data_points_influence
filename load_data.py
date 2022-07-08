@@ -1,36 +1,17 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
+def load_data(dir):
+    train = np.loadtxt("%s/train" % dir, delimiter='\t')
+    valid = np.loadtxt("%s/valid" % dir, delimiter='\t')
+    test = np.loadtxt("%s/test" % dir, delimiter='\t')
 
-def load_movielens(dir):
-    train = np.loadtxt("%s/ml-1m-ex.train.rating" % dir, delimiter='\t')
-    valid = np.loadtxt("%s/ml-1m-ex.valid.rating" % dir, delimiter='\t')
-    test = np.loadtxt("%s/ml-1m-ex.test.rating" % dir, delimiter='\t')
-
-    train_input = train[:, :2].astype(np.int32)
-    train_output = train[:, 2].astype(np.float32)
-    valid_input = valid[:, :2].astype(np.int32)
-    valid_output = valid[:, 2].astype(np.float32)
-    test_input = test[:, :2].astype(np.int32)
-    test_output = test[:, 2].astype(np.float32)
-
-    train = Dataset(train_input, train_output)
-    validation = Dataset(valid_input, valid_output)
-    test = Dataset(test_input, test_output)
-
-    return {"train": train, "valid": validation, "test": test}
-
-
-def load_yelp(dir):
-    train = np.loadtxt("%s/yelp-ex.train.rating" % dir, delimiter='\t')
-    valid = np.loadtxt("%s/yelp-ex.valid.rating" % dir, delimiter='\t')
-    test = np.loadtxt("%s/yelp-ex.test.rating" % dir, delimiter='\t')
-
-    train_input = train[:, :2].astype(np.int32)
-    train_output = train[:, 2].astype(np.float32)
-    valid_input = valid[:, :2].astype(np.int32)
-    valid_output = valid[:, 2].astype(np.float32)
-    test_input = test[:, :2].astype(np.int32)
-    test_output = test[:, 2].astype(np.float32)
+    train_input = train[:, :-1]
+    train_output = train[:, -1]
+    valid_input = valid[:, :-1]
+    valid_output = valid[:, -1]
+    test_input = test[:, :-1]
+    test_output = test[:, -1]
 
     train = Dataset(train_input, train_output)
     validation = Dataset(valid_input, valid_output)
@@ -46,6 +27,12 @@ class Dataset(object):
         assert (x.shape[0] == y.shape[0])
 
         self.x = x
+        for col_id in range(len(self.x[0])):
+            # plt.hist(self.x[:, col_id], 50)
+            # plt.show()
+            self.x[:, col_id] = (self.x[:, col_id] - np.mean(self.x[:, col_id])) / np.std(self.x[:, col_id])
+            # plt.hist(self.x[:, col_id], 50)
+            # plt.show()
         self.using_x = np.copy(x)
         self.y = y
         self.using_y = np.copy(y)

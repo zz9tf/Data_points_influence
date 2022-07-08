@@ -9,26 +9,26 @@ from model.symple_lr import lr
 class Model():
 
     def __init__(self, **kwargs):
+        basic_configs = kwargs.pop("basic_configs")
         
+        # loading data
+        self.dataset = basic_configs.pop("dataset")
+        self.remain_ids = np.array(range(self.dataset['train'].num_examples))
+
         # Use CUDA
         if torch.cuda.is_available():
             self.device = torch.device("cuda:0")
         else:
             self.device = torch.device("cpu")
         
-        basic_configs = kwargs.pop("basic_configs")
         if basic_configs["model"] == "MF":
             self.model = MF(model_configs=kwargs.pop("model_configs"))
         elif basic_configs["model"] == "NCF":
             self.model = NCF(model_configs=kwargs.pop("model_configs"))
         elif basic_configs["model"] == "lr":
-            self.model = lr(model_configs=kwargs.pop("model_configs"))
+            self.model = lr(model_configs=kwargs.pop("model_configs"), input_elem=len(self.dataset['train'].x[0]))
         else:
             assert NotImplementedError
-        
-        # loading data
-        self.dataset = basic_configs.pop("dataset")
-        self.remain_ids = np.array(range(self.dataset['train'].num_examples))
 
         # training hyperparameter
         self.batch_size = basic_configs.pop("batch_size", None)
@@ -68,6 +68,19 @@ class Model():
         self.dataset['train'].reset_using(self.remain_ids)
 
     def load_model(self, checkpoint_name=None):
+        """This method initializes model perameters or loads model checkpoint by 
+        checkpoint_name. If the model dosen't exist, this method require user to
+        input a valid checkpoint name or q to reset model parameter without load
+        any model.
+
+        Args:
+            checkpoint_name (_type_, optional): The name of the model checkpoint. 
+            Defaults to None.
+
+        Returns:
+            num_epoch: The epoch the model has been trained. So the model could
+            continue its train with higher epochs.
+        """
         self.model.reset_parameters()
         num_epoch = 0
         all_files = os.listdir(os.path.join(self.result_dir))
@@ -138,10 +151,11 @@ class Model():
             train_predict = self.model(train_x)
             train_y = train_y.float()
             train_loss = self.loss_fn(train_predict, train_y)
-            
+
             test_x, test_y = self.np2tensor(self.dataset["test"].get_batch(self.batch_size))
             test_predict = self.model(test_x)
             test_loss = self.loss_fn(test_predict, test_y)
+            
             self.optimizer.zero_grad()
             train_loss.backward()
             self.optimizer.step()

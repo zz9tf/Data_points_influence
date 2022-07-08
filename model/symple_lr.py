@@ -4,8 +4,8 @@ class lr(torch.nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
         model_configs=kwargs.pop('model_configs')
-
-        self.linear = torch.nn.Linear(2, 1)
+        self.linear = torch.nn.Linear(kwargs.pop('input_elem'), 1)
+        
     def reset_parameters(self):
         self.linear.reset_parameters()
 
