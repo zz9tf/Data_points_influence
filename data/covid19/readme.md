@@ -1,1 +1,0 @@
-https://github.com/ashfarhangi/COVID-19

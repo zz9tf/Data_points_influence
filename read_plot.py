@@ -209,7 +209,7 @@ def read_perform_better():
     performance = []
     percents = ['0.9', '0.7', '0.5', '0.3', '0.1']
     for percent in percents:
-        file_name = 'perform_better{}-lr-movielens.npz'.format(percent)
+        file_name = 'perform_better{}-lr-census_income.npz'.format(percent)
         file = np.load('plot_result/{}'.format(file_name), allow_pickle=True)['performance'].item()
         for eva_type in file:
             for acc in file[eva_type]:
