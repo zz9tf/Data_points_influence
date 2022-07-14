@@ -151,7 +151,6 @@ class Model():
             train_predict = self.model(train_x)
             train_y = train_y.float()
             train_loss = self.loss_fn(train_predict, train_y)
-
             test_x, test_y = self.np2tensor(self.dataset["test"].get_batch(self.batch_size))
             test_predict = self.model(test_x)
             test_loss = self.loss_fn(test_predict, test_y)

@@ -7,14 +7,14 @@ import custom_method
 
 configs = {
     # detaset
-    "dataset": "ratio",  # name of dataset: movielens or yelp or census_income
+    "dataset": "fraud_detection",  # name of dataset: movielens, yelp, census_income, churn, fraud_detection
     "datapath": "data",  # the path of datasets
     # model configs
     "model": "lr",  # modeltype:MF or NCF or lr
     "embedding_size": 2,  # embedding size
     # train configs
     "batch_size": 4096,  # 3020,  # the batch_size for training or predict, None for not to use batch
-    "lr": 1e-7,  # initial learning rate for training MF or NCF model
+    "lr": 1e-4,  # initial learning rate for training MF or NCF model
     "weight_decay": 1e-2,  # l2 regularization term for training MF or NCF model
     # train
     "num_epoch_train": 270000,  # training steps
@@ -61,17 +61,15 @@ model = Model(
             configs['dataset'], configs['model'], configs['embedding_size'], configs['weight_decay'])
     }
 )
-model.train(verbose=True, plot=True)
-eva_x, eva_y = model.np2tensor(model.dataset['test'].get_batch())
-eva_diff = model.model(eva_x) - eva_y
-print(eva_diff)
-print(eva_y)
-print(torch.mean(1-torch.abs(eva_diff/eva_y)))
-exit()
+# model.train(verbose=True, plot=True)
+# eva_x, eva_y = model.np2tensor(model.dataset['test'].get_batch())
+# eva_diff = model.model(eva_x) - eva_y
+# print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+# exit()
 
 # custom_method.experience_get_correlation(model=model, configs=configs)
 # custom_method.exprience_remove_all_negtive(model=model, configs=configs)
 # custom_method.experience_predict_distribution(model, configs, precent_to_keep=0.7)
-custom_method.experience_possible_better(model, configs, percents=[0.9, 0.7, 0.5, 0.3, 0.1], eva_set=['test', 'valid']) # 
+custom_method.experience_possible_better(model, configs, percents=[0.1], eva_set=['test', 'valid'])
 
 

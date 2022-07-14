@@ -30,7 +30,10 @@ class Dataset(object):
         for col_id in range(len(self.x[0])):
             # plt.hist(self.x[:, col_id], 50)
             # plt.show()
-            self.x[:, col_id] = (self.x[:, col_id] - np.mean(self.x[:, col_id])) / np.std(self.x[:, col_id])
+            if np.std(self.x[:, col_id]) != 0:
+                self.x[:, col_id] = (self.x[:, col_id] - np.mean(self.x[:, col_id])) / np.std(self.x[:, col_id])
+            else:
+                self.x[:, col_id] = np.ones_like(self.x[:, col_id])
             # plt.hist(self.x[:, col_id], 50)
             # plt.show()
         self.using_x = np.copy(x)
