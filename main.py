@@ -13,7 +13,7 @@ configs = {
     "model": "lr",  # modeltype:MF or NCF or lr
     "embedding_size": 2,  # embedding size
     # train configs
-    "batch_size": 4096,  # 3020,  # the batch_size for training or predict, None for not to use batch
+    "batch_size": 2048,  # 3020,  # the batch_size for training or predict, None for not to use batch
     "lr": 1e-4,  # initial learning rate for training MF or NCF model
     "weight_decay": 1e-2,  # l2 regularization term for training MF or NCF model
     # train

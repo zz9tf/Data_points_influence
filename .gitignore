@@ -1,3 +1,7 @@
 *.pyc
 result
 *.bat
+pw.hpcc.brandeis
+pw.hpcc.brandeis.pub
+*.sh
+.ssh

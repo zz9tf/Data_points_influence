@@ -1,4 +1,3 @@
-from sympy import per
 import torch
 import numpy as np
 from scipy.stats import pearsonr

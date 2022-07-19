@@ -209,7 +209,7 @@ def read_perform_better():
     performance = []
     percents = ['0.9', '0.7', '0.5', '0.3', '0.1']
     for percent in percents:
-        file_name = 'perform_better{}-lr-churn.npz'.format(percent)
+        file_name = 'perform_better{}-lr-fraud_detection.npz'.format(percent)
         file = np.load('plot_result/{}'.format(file_name), allow_pickle=True)['performance'].item()
         for eva_type in file:
             for acc in file[eva_type]:
@@ -220,8 +220,8 @@ def read_perform_better():
     #             , all_data=performance, x_axis_labels=precents, ax=ax
     #             , x_label="remains precent", y_label="accuracy", title="less data, better accuracy")
     ax = sns.violinplot(x="remains precent", y="accuracy", hue="data type", data=performance, palette="muted", split=True)
-    ax.axhline(y=0.8, color='orangered', linestyle=':', label="accuracy with test data")
-    ax.axhline(y=0.7885, color='c', linestyle=':', label="accuracy with valid data")
+    ax.axhline(y=0.8527112848070347, color='orangered', linestyle=':', label="accuracy with test data")
+    ax.axhline(y=0.840009770395701, color='c', linestyle=':', label="accuracy with valid data")
     plt.legend()
     plt.show()
 
