@@ -26,7 +26,7 @@ class Model():
         elif basic_configs["model"] == "NCF":
             self.model = NCF(model_configs=kwargs.pop("model_configs"))
         elif basic_configs["model"] == "lr":
-            self.model = lr(model_configs=kwargs.pop("model_configs"), input_elem=len(self.dataset['train'].x[0]))
+            self.model = lr(model_configs=kwargs.pop("model_configs"))
         else:
             assert NotImplementedError
 

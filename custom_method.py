@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from scipy.stats import pearsonr
 
+# method
 def hessian(model):
         train_x, train_y = model.np2tensor(model.dataset['train'].get_batch())
         train_loss = model.loss_fn(model.model(train_x), train_y)
@@ -84,15 +85,16 @@ def predict_on_batch(model=None, eva_set_type='test', inf_id=None):
     inf = -np.matmul(eva_grad, np.matmul(inverse_H, inf_grad))/ model.dataset['train'].num_examples
     return inf
 
-def experience_get_correlation(model, configs, eva_set_type='test', eva_id=None):
+# experience
+def experiment_get_correlation(model, configs, eva_set_type='test', eva_id=None):
     """This method gets the correlation between predict influences and real influences
     of all current sample points.
 
     Args:
         model (Model): An model object
-        configs (dictionary): An dictionary includes all configurations.
-        eva_set_type
-        eva_id
+        configs (argparse.Namespace): An argparse.Namespace object includes all configurations.
+        eva_set_type(list): An List of strings represents all types of datasets to be evaluated.
+        eva_id(int): An integer represents the id of data point to be evaluated.
     """
     assert eva_set_type in ['train', 'test', 'valid']
     pred_diffs = []
@@ -100,7 +102,7 @@ def experience_get_correlation(model, configs, eva_set_type='test', eva_id=None)
 
     # get original model
     checkpoint = model.train(
-        num_epoch=configs["num_epoch_train"],
+        num_epoch=configs.num_epoch_train,
         verbose=True,
         checkpoint_name="Test"
     )
@@ -129,7 +131,7 @@ def experience_get_correlation(model, configs, eva_set_type='test', eva_id=None)
         # remain_ids = np.setdiff1d(model.remain_ids, np.array([inf_id]))
         model.reset_train_dataset(remain_ids)
         model.train(
-            num_epoch=configs["num_epoch_train"],
+            num_epoch=configs.num_epoch_train,
             checkpoint_name="eva{}_+inf{}".format(eva_id, inf_id)
         )
         re_loss = model.loss_fn(model.model(eva_x), eva_y).item()
@@ -140,12 +142,12 @@ def experience_get_correlation(model, configs, eva_set_type='test', eva_id=None)
     pred_diffs = np.array(pred_diffs)
     print('Correlation is %s' % pearsonr(real_diffs, pred_diffs)[0])
     np.savez(
-        'plot_result/result-%s-%s.npz' % (configs['model'], configs['dataset']),
+        'plot_result/result-%s-%s.npz' % (configs.model, configs.dataset),
         real_diffs=real_diffs,
         pred_diffs=pred_diffs,
     )
 
-def exprience_remove_all_negtive(model, configs, eva_set_type='test', eva_id=None, based_pred=True):
+def experiment_remove_all_negtive(model, configs, eva_set_type='test', eva_id=None, based_pred=True):
     assert eva_set_type in ['train', 'test', 'valid']
 
     diffs = np.array([-1])
@@ -153,9 +155,9 @@ def exprience_remove_all_negtive(model, configs, eva_set_type='test', eva_id=Non
     while len(diffs<=0) > 0:
         # get original checkpoint
         model.train(
-                num_epoch=configs["num_epoch_train"],
-                load_checkpoint=configs["load_checkpoint"],
-                save_checkpoints=configs["save_checkpoint"],
+                num_epoch=configs.num_epoch_train,
+                load_checkpoint=configs.load_checkpoint,
+                save_checkpoints=configs.save_checkpoint,
                 checkpoint_name="ori_num{}".format(model.dataset['train'].num_examples)
         )
         if not based_pred:
@@ -188,12 +190,12 @@ def exprience_remove_all_negtive(model, configs, eva_set_type='test', eva_id=Non
                     remain_ids = np.setdiff1d(model.remain_ids, np.array([inf_id]))
                     model.reset_train_dataset(remain_ids)
                     model.train(
-                        num_epoch=configs["num_epoch_train"],
-                        load_checkpoint=configs["load_checkpoint"],
-                        save_checkpoints=configs["save_checkpoint"],
+                        num_epoch=configs.num_epoch_train,
+                        load_checkpoint=configs.load_checkpoint,
+                        save_checkpoints=configs.save_checkpoint,
                         verbose=False,
                         checkpoint_name="eva{}_inf{}_num{}".format(eva_id, inf_id, model.dataset['train'].num_examples),
-                        plot=configs["plot"]
+                        plot=configs.plot
                     )
                     re_loss = model.loss_fn(model.model(test_x), test_y).item()
                     diffs = np.append(diffs, (re_loss - ori_loss))
@@ -209,12 +211,12 @@ def exprience_remove_all_negtive(model, configs, eva_set_type='test', eva_id=Non
         model.reset_train_dataset(model.remain_ids[1:])
         diffs = diffs[model.remain_ids]
     np.savez(
-        'plot_result/remove_all_negtive-%s-%s.npz' % (configs['model'], configs['dataset']),
+        'plot_result/remove_all_negtive-%s-%s.npz' % (configs.model, configs.dataset),
         ids=model.remain_ids,
         samples_diff_dic=samples_diff_dic
     )
 
-def experience_predict_distribution(model, configs, precent_to_keep=1.0, epoch=100, eva_set_type='test'):
+def experiment_predict_distribution(model, configs, precent_to_keep=1.0, epoch=100, eva_set_type='test'):
     all_select_ids = []
     samples_diff_dic = {}
     remain_num = int(model.dataset['train'].x.shape[0]*precent_to_keep)
@@ -224,7 +226,7 @@ def experience_predict_distribution(model, configs, precent_to_keep=1.0, epoch=1
             remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
         model.reset_train_dataset(remain_ids)
         model.train(
-            num_epoch=configs["num_epoch_train"],
+            num_epoch=configs.num_epoch_train,
             checkpoint_name="rand{}_num{}".format(i, remain_num)
         )
         for inf_id in range(model.dataset['train'].x.shape[0]):
@@ -233,41 +235,59 @@ def experience_predict_distribution(model, configs, precent_to_keep=1.0, epoch=1
             else:
                 samples_diff_dic[inf_id].append(predict_on_batch(model, eva_set_type, inf_id))
     np.savez(
-        'plot_result/rand{}-{}-{}.npz'.format(precent_to_keep, configs['model'], configs['dataset']),
+        'plot_result/rand{}-{}-{}.npz'.format(precent_to_keep, configs.model, configs.dataset),
         point_diffs=samples_diff_dic
     )
 
-def experience_possible_better(model, configs, percents, epoch=100, eva_set=['test']):
+def experiment_possible_better(model, configs, percents, epoch=100, eva_set=['test']):
     
     for eva_set_type in eva_set:
         assert eva_set_type in ['train', 'test', 'valid']
     
-    model.train(num_epoch=configs['num_epoch_train'], checkpoint_name='ori', verbose=True)
-    for eva_type in eva_set:
-        eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
-        eva_diff = model.model(eva_x) - eva_y
-        print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
-    for percent_to_keep in percents:
-        all_select_ids = []
-        remain_num = int(model.dataset['train'].x.shape[0]*percent_to_keep)
-        performance = {}
-        for i in range(epoch):
-            remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
-            while remain_ids in all_select_ids:
+    if configs.task_num == 1:
+        model.train(num_epoch=configs.num_epoch_train, checkpoint_name='ori', verbose=True)
+        for eva_type in eva_set:
+            eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+            eva_diff = model.model(eva_x) - eva_y
+            print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+    elif configs.task_num == 2:
+        for percent_to_keep in percents:
+            all_select_ids = []
+            remain_num = int(model.dataset['train'].x.shape[0]*percent_to_keep)
+            performance = {}
+            for i in range(epoch):
                 remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
-            model.reset_train_dataset(remain_ids)
-            model.train(
-                num_epoch=configs['num_epoch_train'],
-                checkpoint_name='rand{}_num{}'.format(i, remain_num)
+                while remain_ids in all_select_ids:
+                    remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
+                model.reset_train_dataset(remain_ids)
+                model.train(
+                    num_epoch=configs.num_epoch_train,
+                    checkpoint_name='rand{}_num{}'.format(i, remain_num)
+                )
+                for eva_type in eva_set:
+                    eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+                    eva_diff = model.model(eva_x) - eva_y
+                    if eva_type in performance.keys():
+                        performance[eva_type].append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+                    else:
+                        performance[eva_type] = [len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff)]
+            np.savez(
+                'plot_result/perform_better{}-{}-{}.npz'.format(percent_to_keep, configs.model, configs.dataset),
+                performance=performance
             )
-            for eva_type in eva_set:
-                eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
-                eva_diff = model.model(eva_x) - eva_y
-                if eva_type in performance.keys():
-                    performance[eva_type].append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
-                else:
-                    performance[eva_type] = [len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff)]
+
+def experiment_small_model_select_points(model, configs, percents, epoch=100, eva_set=['test']):
+    
+    for eva_set_type in eva_set:
+        assert eva_set_type in ['train', 'test', 'valid']
+    
+    if configs.task_num == 1:
+        row_result = []
+        model.train(num_epoch=configs.num_epoch_train, checkpoint_name='ori', verbose=True)
+        for eva_type in eva_set:
+            eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+            eva_diff = model.model(eva_x) - eva_y
+            row_result.append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
         np.savez(
-            'plot_result/perform_better{}-{}-{}.npz'.format(percent_to_keep, configs['model'], configs['dataset']),
-            performance=performance
+            'raw_data_processing/task{}.npz'.format(configs.task_num)
         )

@@ -1,51 +1,12 @@
 import numpy as np
 import pandas as pd
+from load_data import load_data
+from model.generic_neural_net import Model
+import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def read_diff():
-    diff_dic = np.load("plot_result/result-lr-movielens.npz")
-
-    plt.scatter(diff_dic["real_diffs"], diff_dic["pred_diffs"])
-    all_min = min(min(diff_dic["real_diffs"]), min(diff_dic["pred_diffs"]))
-    all_max = max(max(diff_dic["real_diffs"]), max(diff_dic["pred_diffs"]))
-    plt.plot([all_min, all_max], [all_min, all_max], color="blue", label="x=y")
-    real_min = np.min(diff_dic["real_diffs"])
-    real_max = np.max(diff_dic["real_diffs"])
-    predict_min = np.min(diff_dic["pred_diffs"])
-    predict_max = np.max(diff_dic["pred_diffs"])
-    plt.plot([real_min, real_max], [predict_min, predict_max], color="red", label="min2max on two D")
-    plt.plot([real_min, real_max], [0, 0], color="orange", label="predict effect dividing line")
-    plt.plot([0, 0], [predict_min, predict_max], color="orange", label="real effect dividing line")
-    plt.xlabel("real diff")
-    plt.ylabel("predict diff")
-    plt.legend()
-    plt.show()
-
-def read_remove_all_negtive():
-    remove_all_dic = np.load('plot_result/remove_all_negtive-lr-movielens.npz', allow_pickle=True)
-    print(remove_all_dic['ids'])
-    samples_diff_dic = remove_all_dic['samples_diff_dic'].item()
-    for item in samples_diff_dic.items():
-        plt.plot(np.arange(len(item[1])), item[1], label=str(item[0]))
-        plt.xlabel("num of remove points")
-        plt.ylabel("diff")
-        plt.legend()
-        plt.show()
-
-def read_rand():
-    point_diffs = np.load('plot_result/rand0.1-lr-movielens.npz', allow_pickle=True)['point_diffs'].item()
-    i = 1
-    for point_id in point_diffs:
-        plt.plot(np.arange(len(point_diffs[point_id])), point_diffs[point_id], label=str(point_id))
-        if i == 10 or point_id == len(point_diffs):
-            plt.xlabel("rand times")
-            plt.ylabel("diff")
-            plt.legend()
-            plt.show()
-            i = 1
-        i += 1
-
+# method
 def violin_plot(main_color, line_color, scatter_color
             , all_data, x_axis_labels, ax
             , title=None, x_label=None, y_label=None):
@@ -95,9 +56,112 @@ def violin_plot(main_color, line_color, scatter_color
     if title is not None:
         ax.set_title(title)
 
-def read_rand_violin():
+def import_model():
+    configs = {
+        # detaset
+        "dataset": "fraud_detection",  # name of dataset: movielens, yelp, census_income, churn, fraud_detection
+        "datapath": "data",  # the path of datasets
+        # model configs
+        "model": "lr",  # model type: MF or NCF or lr
+        # train configs
+        "batch_size": 2048,  # 3020,  # the batch_size for training or predict, None for not to use batch
+        "lr": 1e-4,  # initial learning rate for training MF or NCF model
+        "weight_decay": 1e-2,  # l2 regularization term for training MF or NCF model
+        # train
+        "num_epoch_train": 270000,  # training steps
+        "load_checkpoint": True,  # whether loading previous model if it exists.
+        "save_checkpoint": True,  # whether saving the current model
+        "plot": False ,  # if plot the figure of train loss and test loss
+        # Influence on single point by remove one data point
+        "single_point": ["test", "test_y"],   # the target y to be evaluated, train_y, train_loss, test_y, test_loss, None. None means not to evaluate.
+    }
+
+    dataset = load_data(os.path.join(configs['datapath'], configs['dataset']))
+    model_configs = {
+            'MF': {
+                    'num_users': int(np.max(dataset["train"].x[:, 0]) + 1),
+                    'num_items': int(np.max(dataset["train"].x[:, 1]) + 1),
+                    'embedding_size': 16,
+                    'weight_decay': 1e-2 # l2 regularization term for training MF or NCF model
+                },
+            'NCF' : {
+                    'num_users': int(np.max(dataset["train"].x[:, 0]) + 1),
+                    'num_items': int(np.max(dataset["train"].x[:, 1]) + 1),
+                    'embedding_size': 16,
+                    'weight_decay': 1e-2 # l2 regularization term for training MF or NCF model
+                },
+            'lr' : {
+                'input_elem': len(dataset['train'].x[0])
+            }
+    }
+
+    model = Model(
+        # model
+        model_configs=model_configs[configs['model']],
+        basic_configs={
+            'model': configs['model'],
+            # loading data
+            'dataset': dataset,
+            # train configs
+            'batch_size': configs['batch_size'],
+            'learning_rate': configs['lr'],
+            'weight_decay': configs['weight_decay'],
+            
+            # loading configs
+            'result_dir': 'result',
+            'model_name': '%s_%s_embed%d_wd%.0e' % (
+                configs['dataset'], configs['model'], 2, configs['weight_decay'])
+        }
+    )
+    return model
+    
+# read
+def read_correlation():
+    diff_dic = np.load("plot_result/correlation/result-lr-movielens-remove.npz")
+
+    plt.scatter(diff_dic["real_diffs"], diff_dic["pred_diffs"])
+    all_min = min(min(diff_dic["real_diffs"]), min(diff_dic["pred_diffs"]))
+    all_max = max(max(diff_dic["real_diffs"]), max(diff_dic["pred_diffs"]))
+    plt.plot([all_min, all_max], [all_min, all_max], color="blue", label="x=y")
+    real_min = np.min(diff_dic["real_diffs"])
+    real_max = np.max(diff_dic["real_diffs"])
+    predict_min = np.min(diff_dic["pred_diffs"])
+    predict_max = np.max(diff_dic["pred_diffs"])
+    plt.plot([real_min, real_max], [predict_min, predict_max], color="red", label="min2max on two D")
+    plt.plot([real_min, real_max], [0, 0], color="orange", label="predict effect dividing line")
+    plt.plot([0, 0], [predict_min, predict_max], color="orange", label="real effect dividing line")
+    plt.xlabel("real diff")
+    plt.ylabel("predict diff")
+    plt.legend()
+    plt.show()
+
+def read_remove_all_negtive():
+    remove_all_dic = np.load('plot_result/remove_all_negtive-lr-movielens.npz', allow_pickle=True)
+    print(remove_all_dic['ids'])
+    samples_diff_dic = remove_all_dic['samples_diff_dic'].item()
+    for item in samples_diff_dic.items():
+        plt.plot(np.arange(len(item[1])), item[1], label=str(item[0]))
+        plt.xlabel("num of remove points")
+        plt.ylabel("diff")
+        plt.legend()
+        plt.show()
+
+def read_inf_variance_change_with_randTime():
+    point_diffs = np.load('plot_result/inf_variance_with_remains/rand0.1-lr-movielens.npz', allow_pickle=True)['point_diffs'].item()
+    i = 1
+    for point_id in point_diffs:
+        plt.plot(np.arange(len(point_diffs[point_id])), point_diffs[point_id], label=str(point_id))
+        if i == 10 or point_id == len(point_diffs):
+            plt.xlabel("rand times")
+            plt.ylabel("diff")
+            plt.legend()
+            plt.show()
+            i = 1
+        i += 1
+
+def read_inf_variance_acc():
     def ac_rate(file_name):
-        point_diffs = np.load('plot_result/{}'.format(file_name), allow_pickle=True)['point_diffs'].item()
+        point_diffs = np.load('plot_result/inf_variance_with_remains/{}'.format(file_name), allow_pickle=True)['point_diffs'].item()
         ac_rate = np.zeros(100)
         for point_id in point_diffs:
             for i, diff in enumerate(point_diffs[point_id]):
@@ -117,12 +181,12 @@ def read_rand_violin():
                 y_label='accept rate')
     plt.show()
     
-def read_adjust_violin1():
+def read_inf_variance_1by1_distribution():
     sample_diffs = {}
     precents = ['0.9', '0.7', '0.5', '0.3', '0.1']
     for precent in precents:
         file_name = 'rand{}-lr-movielens.npz'.format(precent)
-        point_diffs = np.load('plot_result/{}'.format(file_name), allow_pickle=True)['point_diffs'].item()
+        point_diffs = np.load('plot_result/inf_variance_with_remains/{}'.format(file_name), allow_pickle=True)['point_diffs'].item()
         for sample_id in point_diffs:
             if sample_id in sample_diffs.keys():
                 sample_diffs[sample_id].append(point_diffs[sample_id])
@@ -144,13 +208,13 @@ def read_adjust_violin1():
             ax.label_outer()
         plt.show()
 
-def read_adjust_violin2():
+def read_inf_variance_distribution():
     sample_mean_ac = {}
     precents = ['0.9', '0.7', '0.5', '0.3', '0.1']
     samples_diffs = {}
     for precent in precents:
         file_name = 'rand{}-lr-movielens.npz'.format(precent)
-        point_diffs = np.load('plot_result/{}'.format(file_name), allow_pickle=True)['point_diffs'].item()
+        point_diffs = np.load('plot_result/inf_variance_with_remains/{}'.format(file_name), allow_pickle=True)['point_diffs'].item()
         for sample_id in point_diffs:
             ac_num = len([diff for diff in point_diffs[sample_id] if diff > 0])
             ac = ac_num/len(point_diffs[sample_id])
@@ -205,12 +269,12 @@ def read_adjust_violin2():
     plt.legend()
     plt.show()
 
-def read_perform_better():
+def read_performance():
     performance = []
     percents = ['0.9', '0.7', '0.5', '0.3', '0.1']
     for percent in percents:
         file_name = 'perform_better{}-lr-fraud_detection.npz'.format(percent)
-        file = np.load('plot_result/{}'.format(file_name), allow_pickle=True)['performance'].item()
+        file = np.load('plot_result/performance_higher_accuracy/{}'.format(file_name), allow_pickle=True)['performance'].item()
         for eva_type in file:
             for acc in file[eva_type]:
                 performance.append([percent, acc, eva_type])
@@ -225,11 +289,31 @@ def read_perform_better():
     plt.legend()
     plt.show()
 
+def read_performance_focus_on_higher_accuracy():
+    all_files = os.listdir(os.path.join("result"))
+    model = import_model()
+    ori_checkpoint = None
+    small_checkpoints = []
+    for file_name in all_files:
+        if "ori" in file_name:
+            if ori_checkpoint is None:
+                ori_checkpoint = model.load_model(file_name)
+            else:
+                raise Exception('Too much ori models!')
+        else:
+            small_checkpoints.append(file_name)
+    for file_name in small_checkpoints:
+        model.load_model(file_name)
+        input(model.remain_ids)
 
-# read_diff()
+    
+
+
+# read_correlation()
 # read_remove_all_negtive()
-# read_rand()
-# read_rand_violin()
-# read_adjust_violin1()
-# read_adjust_violin2()
-read_perform_better()
+# read_inf_variance_change_with_randTime()
+# read_inf_variance_acc()
+# read_inf_variance_1by1_distribution()
+# read_inf_variance_distribution()
+# read_performance()
+read_performance_focus_on_higher_accuracy()
