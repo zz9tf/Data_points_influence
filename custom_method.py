@@ -1,5 +1,12 @@
+"""
+This python file is used to save special methods in the research
+
+"""
+
+
 import torch
 import numpy as np
+import os
 from scipy.stats import pearsonr
 
 # method
@@ -141,8 +148,10 @@ def experiment_get_correlation(model, configs, eva_set_type='test', eva_id=None)
     real_diffs = np.array(real_diffs)
     pred_diffs = np.array(pred_diffs)
     print('Correlation is %s' % pearsonr(real_diffs, pred_diffs)[0])
+    if os.path.exists(configs.experiment_save_dir) is False:
+            os.makedirs(configs.experiment_save_dir)
     np.savez(
-        'plot_result/result-%s-%s.npz' % (configs.model, configs.dataset),
+        '{}/result-{}-{}.npz'.format(configs.experiment_save_dir, configs.model, configs.dataset),
         real_diffs=real_diffs,
         pred_diffs=pred_diffs,
     )
@@ -210,8 +219,10 @@ def experiment_remove_all_negtive(model, configs, eva_set_type='test', eva_id=No
         print("remove point {}".format(model.remain_ids[0]))
         model.reset_train_dataset(model.remain_ids[1:])
         diffs = diffs[model.remain_ids]
+    if os.path.exists(configs.experiment_save_dir) is False:
+            os.makedirs(configs.experiment_save_dir)
     np.savez(
-        'plot_result/remove_all_negtive-%s-%s.npz' % (configs.model, configs.dataset),
+        '{}/remove_all_negtive-{}-{}.npz'.format(configs.experiment_save_dir, configs.model, configs.dataset),
         ids=model.remain_ids,
         samples_diff_dic=samples_diff_dic
     )
@@ -224,6 +235,7 @@ def experiment_predict_distribution(model, configs, precent_to_keep=1.0, epoch=1
         remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
         while remain_ids in all_select_ids:
             remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
+        all_select_ids.append(remain_ids)
         model.reset_train_dataset(remain_ids)
         model.train(
             num_epoch=configs.num_epoch_train,
@@ -234,12 +246,14 @@ def experiment_predict_distribution(model, configs, precent_to_keep=1.0, epoch=1
                 samples_diff_dic[inf_id] = [predict_on_batch(model, eva_set_type, inf_id)]
             else:
                 samples_diff_dic[inf_id].append(predict_on_batch(model, eva_set_type, inf_id))
+    if os.path.exists(configs.experiment_save_dir) is False:
+            os.makedirs(configs.experiment_save_dir)
     np.savez(
-        'plot_result/rand{}-{}-{}.npz'.format(precent_to_keep, configs.model, configs.dataset),
+        '{}/rand{}-{}-{}.npz'.format(configs.experiment_save_dir, precent_to_keep, configs.model, configs.dataset),
         point_diffs=samples_diff_dic
     )
 
-def experiment_possible_better(model, configs, percents, epoch=100, eva_set=['test']):
+def experiment_possible_higher_accuracy(model, configs, percents, epoch=100, eva_set=['test']):
     
     for eva_set_type in eva_set:
         assert eva_set_type in ['train', 'test', 'valid']
@@ -250,7 +264,7 @@ def experiment_possible_better(model, configs, percents, epoch=100, eva_set=['te
             eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
             eva_diff = model.model(eva_x) - eva_y
             print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
-    elif configs.task_num == 2:
+    else:
         for percent_to_keep in percents:
             all_select_ids = []
             remain_num = int(model.dataset['train'].x.shape[0]*percent_to_keep)
@@ -259,6 +273,7 @@ def experiment_possible_better(model, configs, percents, epoch=100, eva_set=['te
                 remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
                 while remain_ids in all_select_ids:
                     remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
+                all_select_ids.append(remain_ids)
                 model.reset_train_dataset(remain_ids)
                 model.train(
                     num_epoch=configs.num_epoch_train,
@@ -271,12 +286,14 @@ def experiment_possible_better(model, configs, percents, epoch=100, eva_set=['te
                         performance[eva_type].append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
                     else:
                         performance[eva_type] = [len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff)]
+            if os.path.exists(configs.experiment_save_dir) is False:
+                os.makedirs(configs.experiment_save_dir)
             np.savez(
-                'plot_result/perform_better{}-{}-{}.npz'.format(percent_to_keep, configs.model, configs.dataset),
+                '{}/perform_better{}-{}-{}.npz'.format(configs.experiment_save_dir, percent_to_keep, configs.model, configs.dataset),
                 performance=performance
             )
 
-def experiment_small_model_select_points(model, configs, percents, epoch=100, eva_set=['test']):
+def experiment_small_model_select_points(model, configs, epoch=100, eva_set=['test']):
     
     for eva_set_type in eva_set:
         assert eva_set_type in ['train', 'test', 'valid']

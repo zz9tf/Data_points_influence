@@ -38,6 +38,8 @@ def parse_args():
     parser.add_argument('--single_point', nargs='+', type=str, default=["test", "test_y"],
                         help='the target y to be evaluated, train_y, train_loss, test_y, test_loss, None. None means not to evaluate.')
     # experiment
+    parser.add_argument('--experiment_save_dir', type=str, default="plot_result",
+                        help="the path for experiments to save result")
     parser.add_argument('--task_num', type=int, default=1,
                         help='tell experiment method which part to execute')
 
@@ -84,16 +86,16 @@ model = Model(
             configs.dataset, configs.model, configs.weight_decay)
     }
 )
-model.train(verbose=True, plot=True)
-eva_x, eva_y = model.np2tensor(model.dataset['test'].get_batch())
-eva_diff = model.model(eva_x) - eva_y
-print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
-exit()
+# model.train(verbose=True, plot=True)
+# eva_x, eva_y = model.np2tensor(model.dataset['test'].get_batch())
+# eva_diff = model.model(eva_x) - eva_y
+# print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+# exit()
 
 # custom_method.experiment_get_correlation(model=model, configs=configs)
 # custom_method.experiment_remove_all_negtive(model=model, configs=configs)
 # custom_method.experiment_predict_distribution(model, configs, precent_to_keep=0.7)
-# custom_method.experiment_possible_better(model, configs, percents=[0.1, 0.05,], eva_set=['test', 'valid'])
+# custom_method.experiment_possible_higher_accuracy(model, configs, percents=[0.1, 0.05,], eva_set=['test', 'valid'])
 custom_method.experiment_small_model_select_points()
 
 

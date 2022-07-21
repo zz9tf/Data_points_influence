@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 def load_data(dir):
     train = np.loadtxt("%s/train" % dir, delimiter='\t')

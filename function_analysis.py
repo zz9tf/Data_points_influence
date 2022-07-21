@@ -1,3 +1,8 @@
+"""
+This python file is used to analyze if the model is convex
+"""
+
+
 import numpy as np
 from sympy import *
 

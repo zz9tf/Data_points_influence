@@ -7,56 +7,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # method
-def violin_plot(main_color, line_color, scatter_color
-            , all_data, x_axis_labels, ax
-            , title=None, x_label=None, y_label=None):
-    def adjacent_values(vals, q1, q3):
-        upper_adjacent_value = q3 + (q3 - q1) * 1.5
-        upper_adjacent_value = np.clip(upper_adjacent_value, q3, vals[-1])
-
-        lower_adjacent_value = q1 - (q3 - q1) * 1.5
-        lower_adjacent_value = np.clip(lower_adjacent_value, vals[0], q1)
-        return lower_adjacent_value, upper_adjacent_value
-
-    def set_axis_style(ax, labels):
-        ax.xaxis.set_tick_params(direction='out')
-        ax.xaxis.set_ticks_position('bottom')
-        ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels)
-        ax.set_xlim(0.25, len(labels) + 0.75)
-    
-    try:
-        all_data = [np.sort(data) for data in all_data]
-    except:
-        all_data = [np.sort(all_data)]
-
-    parts = ax.violinplot(all_data, showmeans=False, showmedians=False, showextrema=False)
-    for pc in parts['bodies']:
-        pc.set_facecolor(main_color)
-        pc.set_edgecolor('black')
-        pc.set_alpha(1)
-    quartile1, medians, quartile3 = [], [], []
-    for data in all_data:
-        q1, m, q3 = np.percentile(data, [25, 50, 75], axis=0)
-        quartile1.append(q1)
-        medians.append(m)
-        quartile3.append(q3)
-    whiskers = np.array([
-        adjacent_values(data, q1, q3)
-        for data, q1, q3 in zip(all_data, quartile1, quartile3)])
-    whiskers_min, whiskers_max = whiskers[:, 0], whiskers[:, 1]
-    inds = np.arange(1, len(medians) + 1)
-    ax.scatter(inds, medians, marker='o', color=scatter_color, s=30, zorder=3)
-    ax.vlines(inds, quartile1, quartile3, color=line_color, linestyle='-', lw=5)
-    ax.vlines(inds, whiskers_min, whiskers_max, color=line_color, linestyle='-', lw=2)
-    set_axis_style(ax, x_axis_labels)
-    if x_label is not None:
-        ax.set_xlabel(x_label)
-    if y_label is not None:
-        ax.set_ylabel(y_label)
-    if title is not None:
-        ax.set_title(title)
-
-def import_model():
+def import_configs():
+    # configs perparing...
     configs = {
         # detaset
         "dataset": "fraud_detection",  # name of dataset: movielens, yelp, census_income, churn, fraud_detection
@@ -113,11 +65,68 @@ def import_model():
                 configs['dataset'], configs['model'], 2, configs['weight_decay'])
         }
     )
-    return model
+
+    read_configs = {
+        "read_dir": "experiment_save_results",
+        "configs": configs,
+        "model": model,
+        "model_configs": model_configs
+    }
+    return read_configs
+
+def violin_plot(main_color, line_color, scatter_color
+            , all_data, x_axis_labels, ax
+            , title=None, x_label=None, y_label=None):
+    def adjacent_values(vals, q1, q3):
+        upper_adjacent_value = q3 + (q3 - q1) * 1.5
+        upper_adjacent_value = np.clip(upper_adjacent_value, q3, vals[-1])
+
+        lower_adjacent_value = q1 - (q3 - q1) * 1.5
+        lower_adjacent_value = np.clip(lower_adjacent_value, vals[0], q1)
+        return lower_adjacent_value, upper_adjacent_value
+
+    def set_axis_style(ax, labels):
+        ax.xaxis.set_tick_params(direction='out')
+        ax.xaxis.set_ticks_position('bottom')
+        ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels)
+        ax.set_xlim(0.25, len(labels) + 0.75)
     
+    try:
+        all_data = [np.sort(data) for data in all_data]
+    except:
+        all_data = [np.sort(all_data)]
+
+    parts = ax.violinplot(all_data, showmeans=False, showmedians=False, showextrema=False)
+    for pc in parts['bodies']:
+        pc.set_facecolor(main_color)
+        pc.set_edgecolor('black')
+        pc.set_alpha(1)
+    quartile1, medians, quartile3 = [], [], []
+    for data in all_data:
+        q1, m, q3 = np.percentile(data, [25, 50, 75], axis=0)
+        quartile1.append(q1)
+        medians.append(m)
+        quartile3.append(q3)
+    whiskers = np.array([
+        adjacent_values(data, q1, q3)
+        for data, q1, q3 in zip(all_data, quartile1, quartile3)])
+    whiskers_min, whiskers_max = whiskers[:, 0], whiskers[:, 1]
+    inds = np.arange(1, len(medians) + 1)
+    ax.scatter(inds, medians, marker='o', color=scatter_color, s=30, zorder=3)
+    ax.vlines(inds, quartile1, quartile3, color=line_color, linestyle='-', lw=5)
+    ax.vlines(inds, whiskers_min, whiskers_max, color=line_color, linestyle='-', lw=2)
+    set_axis_style(ax, x_axis_labels)
+    if x_label is not None:
+        ax.set_xlabel(x_label)
+    if y_label is not None:
+        ax.set_ylabel(y_label)
+    if title is not None:
+        ax.set_title(title)
+
+
 # read
-def read_correlation():
-    diff_dic = np.load("plot_result/correlation/result-lr-movielens-remove.npz")
+def read_correlation(configs):
+    diff_dic = np.load("{}/correlation/result-lr-movielens-remove.npz".format(configs["read_dir"]))
 
     plt.scatter(diff_dic["real_diffs"], diff_dic["pred_diffs"])
     all_min = min(min(diff_dic["real_diffs"]), min(diff_dic["pred_diffs"]))
@@ -135,8 +144,8 @@ def read_correlation():
     plt.legend()
     plt.show()
 
-def read_remove_all_negtive():
-    remove_all_dic = np.load('plot_result/remove_all_negtive-lr-movielens.npz', allow_pickle=True)
+def read_remove_all_negtive(read_configs):
+    remove_all_dic = np.load('{}/remove_all_negtive-lr-movielens.npz'.format(read_configs["read_dir"]), allow_pickle=True)
     print(remove_all_dic['ids'])
     samples_diff_dic = remove_all_dic['samples_diff_dic'].item()
     for item in samples_diff_dic.items():
@@ -146,8 +155,8 @@ def read_remove_all_negtive():
         plt.legend()
         plt.show()
 
-def read_inf_variance_change_with_randTime():
-    point_diffs = np.load('plot_result/inf_variance_with_remains/rand0.1-lr-movielens.npz', allow_pickle=True)['point_diffs'].item()
+def read_inf_variance_change_with_randTime(read_configs):
+    point_diffs = np.load('{}/inf_variance_with_remains/rand0.1-lr-movielens.npz'.format(read_configs["read_dir"]), allow_pickle=True)['point_diffs'].item()
     i = 1
     for point_id in point_diffs:
         plt.plot(np.arange(len(point_diffs[point_id])), point_diffs[point_id], label=str(point_id))
@@ -159,9 +168,9 @@ def read_inf_variance_change_with_randTime():
             i = 1
         i += 1
 
-def read_inf_variance_acc():
+def read_inf_variance_acc(read_configs):
     def ac_rate(file_name):
-        point_diffs = np.load('plot_result/inf_variance_with_remains/{}'.format(file_name), allow_pickle=True)['point_diffs'].item()
+        point_diffs = np.load('{}/inf_variance_with_remains/{}'.format(configs["read_dir"], file_name), allow_pickle=True)['point_diffs'].item()
         ac_rate = np.zeros(100)
         for point_id in point_diffs:
             for i, diff in enumerate(point_diffs[point_id]):
@@ -181,12 +190,12 @@ def read_inf_variance_acc():
                 y_label='accept rate')
     plt.show()
     
-def read_inf_variance_1by1_distribution():
+def read_inf_variance_1by1_distribution(read_configs):
     sample_diffs = {}
     precents = ['0.9', '0.7', '0.5', '0.3', '0.1']
     for precent in precents:
         file_name = 'rand{}-lr-movielens.npz'.format(precent)
-        point_diffs = np.load('plot_result/inf_variance_with_remains/{}'.format(file_name), allow_pickle=True)['point_diffs'].item()
+        point_diffs = np.load('{}/inf_variance_with_remains/{}'.format(read_configs["read_dir"], file_name), allow_pickle=True)['point_diffs'].item()
         for sample_id in point_diffs:
             if sample_id in sample_diffs.keys():
                 sample_diffs[sample_id].append(point_diffs[sample_id])
@@ -208,13 +217,13 @@ def read_inf_variance_1by1_distribution():
             ax.label_outer()
         plt.show()
 
-def read_inf_variance_distribution():
+def read_inf_variance_distribution(read_configs):
     sample_mean_ac = {}
     precents = ['0.9', '0.7', '0.5', '0.3', '0.1']
     samples_diffs = {}
     for precent in precents:
         file_name = 'rand{}-lr-movielens.npz'.format(precent)
-        point_diffs = np.load('plot_result/inf_variance_with_remains/{}'.format(file_name), allow_pickle=True)['point_diffs'].item()
+        point_diffs = np.load('{}/inf_variance_with_remains/{}'.format(read_configs["read_dir"], file_name), allow_pickle=True)['point_diffs'].item()
         for sample_id in point_diffs:
             ac_num = len([diff for diff in point_diffs[sample_id] if diff > 0])
             ac = ac_num/len(point_diffs[sample_id])
@@ -269,12 +278,12 @@ def read_inf_variance_distribution():
     plt.legend()
     plt.show()
 
-def read_performance():
+def read_performance(read_configs):
     performance = []
     percents = ['0.9', '0.7', '0.5', '0.3', '0.1']
     for percent in percents:
         file_name = 'perform_better{}-lr-fraud_detection.npz'.format(percent)
-        file = np.load('plot_result/performance_higher_accuracy/{}'.format(file_name), allow_pickle=True)['performance'].item()
+        file = np.load('{}/performance_higher_accuracy/{}'.format(read_configs["read_dir"], file_name), allow_pickle=True)['performance'].item()
         for eva_type in file:
             for acc in file[eva_type]:
                 performance.append([percent, acc, eva_type])
@@ -289,9 +298,9 @@ def read_performance():
     plt.legend()
     plt.show()
 
-def read_performance_focus_on_higher_accuracy():
+def read_performance_focus_on_higher_accuracy(read_configs):
     all_files = os.listdir(os.path.join("result"))
-    model = import_model()
+    model = read_configs["model"]
     ori_checkpoint = None
     small_checkpoints = []
     for file_name in all_files:
@@ -306,14 +315,13 @@ def read_performance_focus_on_higher_accuracy():
         model.load_model(file_name)
         input(model.remain_ids)
 
-    
+read_configs = import_configs()
 
-
-# read_correlation()
-# read_remove_all_negtive()
-# read_inf_variance_change_with_randTime()
-# read_inf_variance_acc()
-# read_inf_variance_1by1_distribution()
-# read_inf_variance_distribution()
-# read_performance()
-read_performance_focus_on_higher_accuracy()
+# read_correlation(read_configs)
+# read_remove_all_negtive(read_configs)
+# read_inf_variance_change_with_randTime(read_configs)
+# read_inf_variance_acc(read_configs)
+# read_inf_variance_1by1_distribution(read_configs)
+# read_inf_variance_distribution(read_configs)
+# read_performance(read_configs)
+# read_performance_focus_on_higher_accuracy(read_configs) ### Not finish yet
