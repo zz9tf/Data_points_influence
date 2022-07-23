@@ -3,9 +3,9 @@ set datasets=movielens census_income churn fraud_detection
 set experiment=experiment_small_model_select_points
 set task_start_num=1
 set task_end_num=2
-set execution=download
+set execution=send
 
-if %% == 3 (
+if %execution% == send (
     Rem ################# Send remote #######################
 Rem Overwrite the experiment folder
 mkdir "%experiment%"
@@ -42,7 +42,10 @@ for %%a in (%datasets%) do (
         rmdir /s /q "%%a_task%%b"
     )
 )
-) else (
+Rem remove all my squeue
+Rem squeue -u $USER | grep {jobs_id} | awk '{print $1}' | xargs -n 1 scancel
+) 
+if %execution% == download (
     Rem ################# Download results from remote #######################
 )
 
