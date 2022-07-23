@@ -10,6 +10,9 @@ import os
 from scipy.stats import pearsonr
 
 # method
+def chack_eva_type():
+    pass
+
 def hessian(model):
         train_x, train_y = model.np2tensor(model.dataset['train'].get_batch())
         train_loss = model.loss_fn(model.model(train_x), train_y)
@@ -78,6 +81,7 @@ def predict_on_batch(model=None, eva_set_type='test', inf_id=None):
     assert model is not None
     assert eva_set_type in ['train', 'test', 'valid']
     assert inf_id is not None
+
     eva_x, eva_y = model.np2tensor(model.dataset[eva_set_type].get_batch())
     eva_loss = model.loss_fn(model.model(eva_x), eva_y)
     eva_grad = torch.autograd.grad(eva_loss, model.model.parameters())
@@ -89,8 +93,9 @@ def predict_on_batch(model=None, eva_set_type='test', inf_id=None):
     inf_grad = torch.autograd.grad(inf_loss, model.model.parameters())
     inf_grad = torch.cat([grad.flatten() for grad in inf_grad]).numpy()
 
-    inf = -np.matmul(eva_grad, np.matmul(inverse_H, inf_grad))/ model.dataset['train'].num_examples
+    inf = -np.matmul(eva_grad, np.matmul(inverse_H, inf_grad)) / model.dataset['train'].num_examples
     return inf
+
 
 # experience
 def experiment_get_correlation(model, configs, eva_set_type='test', eva_id=None):
@@ -193,7 +198,8 @@ def experiment_remove_all_negtive(model, configs, eva_set_type='test', eva_id=No
                         model=model,
                         eva_id=eva_id,
                         eva_set_type=eva_set_type,
-                        inf_id=inf_id))
+                        inf_id=inf_id
+                    ))
             else:
                 if inf_id in remain_ids:
                     remain_ids = np.setdiff1d(model.remain_ids, np.array([inf_id]))
@@ -253,58 +259,153 @@ def experiment_predict_distribution(model, configs, precent_to_keep=1.0, epoch=1
         point_diffs=samples_diff_dic
     )
 
-def experiment_possible_higher_accuracy(model, configs, percents, epoch=100, eva_set=['test']):
+def experiment_possible_higher_accuracy(model, configs, experiment_configs):
     
-    for eva_set_type in eva_set:
+    for eva_set_type in experiment_configs["eva_sets"]:
         assert eva_set_type in ['train', 'test', 'valid']
     
     if configs.task_num == 1:
+        all_ori_accuracies = []
         model.train(num_epoch=configs.num_epoch_train, checkpoint_name='ori', verbose=True)
-        for eva_type in eva_set:
+        for eva_type in experiment_configs["eva_sets"]:
             eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
             eva_diff = model.model(eva_x) - eva_y
-            print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+            all_ori_accuracies.append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+        if os.path.exists(configs.experiment_save_dir) is False:
+            os.makedirs(configs.experiment_save_dir)
+        np.savez(
+            '{}/{}_task{}.npz'.format(configs.experiment_save_dir, configs.dataset, configs.task_num),
+            all_ori_accuracies=all_ori_accuracies
+        )
     else:
-        for percent_to_keep in percents:
-            all_select_ids = []
-            remain_num = int(model.dataset['train'].x.shape[0]*percent_to_keep)
-            performance = {}
-            for i in range(epoch):
+        # {dataset}_task{task_num} for each single task
+        all_ids_this_task = np.load('{}/{}/{}_task{}.npz'.format(configs.aid_dir, configs.experiment, configs.dataset, configs.task_num) , allow_pickle=True)['all_ids_this_task']
+        performance = {}
+        for i, remain_ids in enumerate(all_ids_this_task):
+            model.reset_train_dataset(remain_ids)
+            model.train(
+                num_epoch=configs.num_epoch_train,
+                checkpoint_name='rand{}_num{}'.format(i+(configs.task_num-2)*10, len(remain_ids))
+            )
+            for eva_type in experiment_configs["eva_sets"]:
+                eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+                eva_diff = model.model(eva_x) - eva_y
+                if eva_type in performance.keys():
+                    performance[eva_type].append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+                else:
+                    performance[eva_type] = [len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff)]
+        if os.path.exists(configs.experiment_save_dir) is False:
+            os.makedirs(configs.experiment_save_dir)
+        np.savez(
+            '{}/{}_task{}.npz'.format(configs.experiment_save_dir, configs.dataset, configs.task_num),
+            all_ori_accuracies=all_ori_accuracies
+        )
+
+def experiment_small_model_select_points(model, configs, experiment_configs):
+    """_summary_
+
+    Args:
+        model (Model): An model object
+        configs (argparse.Namespace): An argparse.Namespace object includes all configurations.
+        experiment_configs(dict): An dictionary of experiment_configs.
+    """
+    def whole_data_accuracies_task():
+        """
+        This task get accuracies of a big model(with all training data) on all eva_sets.
+        
+        this task can be tested by the following code:
+            python -u main.py --experiment experiment_small_model_select_points --dataset fraud_detection --task_num 1
+        """
+        
+        all_ori_accuracies = []
+        model.train(num_epoch=configs.num_epoch_train, checkpoint_name='ori', verbose=True)
+        for eva_type in experiment_configs["eva_sets"]:
+            eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+            eva_diff = model.model(eva_x) - eva_y
+            all_ori_accuracies.append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+        if os.path.exists(configs.experiment_save_dir) is False:
+            os.makedirs(configs.experiment_save_dir)
+        np.savez(
+            '{}/{}_task{}.npz'.format(configs.experiment_save_dir, configs.dataset, configs.task_num),
+            all_ori_accuracies=all_ori_accuracies
+        )
+    
+    def small_model_task():
+        """
+        This task evaluates the performance of small model with well selected data. The task step is following:
+            1. training {num_rand_model} small models with randomly selected data.
+            2. Get indexes of selected data according to the influence value predicted by previous models.
+                the indexes of negative influence value(adding the point has negative effect on loss) will be remained.
+                two method will be applied for selecting data points: mean value method, vote method
+            3. training a small model with well selected data
+            4. get the accuracy of the model on all eva_sets
+        
+        this task can be tested by the following code:
+            python -u main.py --experiment experiment_small_model_select_points --dataset fraud_detection --task_num 2
+        """
+        performance = {}
+        remain_num = int(model.dataset['train'].x.shape[0]*experiment_configs["remain_percent"])
+
+        for repeat_epoch in range(1, experiment_configs["repeat_times"]+1):
+            all_infs = []
+            for model_id in range(1, experiment_configs["num_rand_model"]+1):
                 remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
-                while remain_ids in all_select_ids:
-                    remain_ids = np.random.choice(np.arange(model.dataset['train'].x.shape[0]), size=remain_num, replace=False)
-                all_select_ids.append(remain_ids)
+                # training model with randomly selected training data
                 model.reset_train_dataset(remain_ids)
                 model.train(
                     num_epoch=configs.num_epoch_train,
-                    checkpoint_name='rand{}_num{}'.format(i, remain_num)
+                    checkpoint_name='rand{}_model{}_num{}'.format(repeat_epoch+(configs.task_num-2)*experiment_configs['repeat_times'], model_id, len(remain_ids)),
+                    save_checkpoints=True
                 )
-                for eva_type in eva_set:
-                    eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
-                    eva_diff = model.model(eva_x) - eva_y
-                    if eva_type in performance.keys():
-                        performance[eva_type].append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
-                    else:
-                        performance[eva_type] = [len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff)]
-            if os.path.exists(configs.experiment_save_dir) is False:
-                os.makedirs(configs.experiment_save_dir)
-            np.savez(
-                '{}/perform_better{}-{}-{}.npz'.format(configs.experiment_save_dir, percent_to_keep, configs.model, configs.dataset),
-                performance=performance
+                # get inf value of all data points
+                eva_set_type = "test"
+                infs = np.array([])
+                for inf_id in range(model.dataset['train'].x.shape[0]):
+                    print("processing point {}/{}".format(inf_id+1, model.dataset['train'].x.shape[0]))
+                    infs = np.append(infs, -predict_on_batch(
+                            model=model,
+                            eva_set_type=eva_set_type,
+                            inf_id=inf_id
+                        ))
+                all_infs.append(infs)
+            all_infs = np.stack(all_infs)
+            if experiment_configs["data_selecting_method"] == "mean":
+                all_infs = np.mean(all_infs, axis=0)
+                remain_ids = np.where(all_infs < 0)[0]
+            elif experiment_configs["data_selecting_method"] == "vote":
+                remain_ids = np.count_nonzero(all_infs > 0, axis=0)
+                input(remain_ids)
+                input("working on this")
+            else:
+                assert NotImplementedError
+            # training model with selected training data according to inf predicted by previous randomly-selected-data model
+            model.reset_train_dataset(remain_ids)
+            model.train(
+                num_epoch=configs.num_epoch_train,
+                checkpoint_name='select{}_num{}'.format(repeat_epoch+(configs.task_num-2)*experiment_configs['repeat_times'], len(remain_ids)),
+                save_checkpoints=True
             )
-
-def experiment_small_model_select_points(model, configs, epoch=100, eva_set=['test']):
-    
-    for eva_set_type in eva_set:
-        assert eva_set_type in ['train', 'test', 'valid']
-    
-    if configs.task_num == 1:
-        row_result = []
-        model.train(num_epoch=configs.num_epoch_train, checkpoint_name='ori', verbose=True)
-        for eva_type in eva_set:
-            eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
-            eva_diff = model.model(eva_x) - eva_y
-            row_result.append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+            # evaluate the accuracies of the model on all eva_set
+            for eva_type in experiment_configs["eva_sets"]:
+                eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+                eva_diff = model.model(eva_x) - eva_y
+                if eva_type in performance.keys():
+                    performance[eva_type].append(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+                else:
+                    performance[eva_type] = [len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff)]
+        # save the result
+        if os.path.exists(configs.experiment_save_dir) is False:
+            os.makedirs(configs.experiment_save_dir)
         np.savez(
-            'raw_data_processing/task{}.npz'.format(configs.task_num)
+            '{}/{}_task{}.npz'.format(configs.experiment_save_dir, configs.dataset, configs.task_num),
+            performance=performance
         )
+    
+    for eva_set_type in experiment_configs["eva_sets"]:
+        assert eva_set_type in ['train', 'test', 'valid']
+        
+    if configs.task_num == 1:
+        whole_data_accuracies_task()
+
+    else:
+        small_model_task()

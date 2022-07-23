@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # method
-def import_configs():
+def set_configs():
     # configs perparing...
     configs = {
         # detaset
@@ -122,7 +122,6 @@ def violin_plot(main_color, line_color, scatter_color
         ax.set_ylabel(y_label)
     if title is not None:
         ax.set_title(title)
-
 
 # read
 def read_correlation(configs):
@@ -315,7 +314,7 @@ def read_performance_focus_on_higher_accuracy(read_configs):
         model.load_model(file_name)
         input(model.remain_ids)
 
-read_configs = import_configs()
+read_configs = set_configs()
 
 # read_correlation(read_configs)
 # read_remove_all_negtive(read_configs)

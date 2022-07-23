@@ -90,7 +90,7 @@ class Dataset(object):
 
     def get_by_idxs(self, idxs=None):
         assert idxs is not None
-        return self.x.take(idxs, axis=0).reshape((-1,2)), self.y.take(idxs)
+        return self.x.take(idxs, axis=0), self.y.take(idxs)
 
     def get_related_idxs(self, x_idx):
         """This method returns related indexs of provided index.

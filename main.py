@@ -4,9 +4,9 @@ import torch
 import argparse
 from load_data import load_data
 from model.generic_neural_net import Model
-import custom_method
+import custom_methods
 
-def parse_args():
+def set_configs():
     parser = argparse.ArgumentParser()
     # detaset
     parser.add_argument('--dataset', type=str, default='fraud_detection',
@@ -25,7 +25,7 @@ def parse_args():
                         help='initial learning rate for the training model')
     parser.add_argument('--weight_decay', type=float, default=1e-2,
                         help='l2 regularization term for the training model')
-    # train process
+    # train process configs
     parser.add_argument('--num_epoch_train', type=int, default=270000,
                         help='training steps for the training model')
     parser.add_argument('--load_checkpoint', type=bool, default=True,
@@ -34,19 +34,19 @@ def parse_args():
                         help='whether saving the current model')
     parser.add_argument('--plot', type=bool, default=False,
                         help='if plot the figure of train loss and test loss')
-    # Influence on single point by remove one data point
-    parser.add_argument('--single_point', nargs='+', type=str, default=["test", "test_y"],
-                        help='the target y to be evaluated, train_y, train_loss, test_y, test_loss, None. None means not to evaluate.')
     # experiment
-    parser.add_argument('--experiment_save_dir', type=str, default="plot_result",
-                        help="the path for experiments to save result")
+    parser.add_argument('--experiment', type=str, default="experiment_small_model_select_points",
+                        help='the target exprience to execute')
     parser.add_argument('--task_num', type=int, default=1,
-                        help='tell experiment method which part to execute')
+                        help='tell experiment method which task part to execute')
+    parser.add_argument('--aid_dir', type=str, default="aid",
+                        help="the path for aid data needed in expriments")
+    parser.add_argument('--experiment_save_dir', type=str, default="experiment_save_results",
+                        help="the path for experiments to save result")
 
     return parser.parse_args()
 
-
-configs = parse_args()
+configs = set_configs()
 
 dataset = load_data(os.path.join(configs.datapath, configs.dataset))
         
@@ -86,17 +86,42 @@ model = Model(
             configs.dataset, configs.model, configs.weight_decay)
     }
 )
-# model.train(verbose=True, plot=True)
-# eva_x, eva_y = model.np2tensor(model.dataset['test'].get_batch())
-# eva_diff = model.model(eva_x) - eva_y
-# print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
-# exit()
 
-# custom_method.experiment_get_correlation(model=model, configs=configs)
-# custom_method.experiment_remove_all_negtive(model=model, configs=configs)
-# custom_method.experiment_predict_distribution(model, configs, precent_to_keep=0.7)
-# custom_method.experiment_possible_higher_accuracy(model, configs, percents=[0.1, 0.05,], eva_set=['test', 'valid'])
-custom_method.experiment_small_model_select_points()
+if configs.experiment =="test":
+    model.train(verbose=True, plot=True)
+    eva_x, eva_y = model.np2tensor(model.dataset['test'].get_batch())
+    eva_diff = model.model(eva_x) - eva_y
+    print(len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff))
+    exit()
+elif configs.experiment == "experiment_get_correlation":
+    custom_methods.experiment_get_correlation(model=model, configs=configs)
+elif configs.experiment == "experiment_remove_all_negtive":
+    custom_methods.experiment_remove_all_negtive(model=model, configs=configs)
+elif configs.experiment == "experiment_predict_distribution":
+    experiment_configs = {
+        "precent_to_keep": 0.7
+    }
+    custom_methods.experiment_predict_distribution(model=model, configs=configs, precent_to_keep=0.7)
+elif configs.experiment == "experiment_possible_higher_accuracy":
+    experiment_configs = {
+        # all task
+        "eva_sets": ['test', 'valid'],
+        # possible_higher_accuracy_task
+        "remain_percents": [0.1, 0.05],
+        "repeat_times": 10
+    }
+    custom_methods.experiment_possible_higher_accuracy(model=model, configs=configs, experiment_configs=experiment_configs)
+elif configs.experiment == "experiment_small_model_select_points":
+    experiment_configs = {
+        # all task
+        "eva_sets": ['test', 'valid'],
+        # small_model_task
+        "remain_percent": 0.1,
+        "repeat_times": 10,
+        "num_rand_model": 1,
+        "data_selecting_method": "mean" # mean or vote
+    }
+    custom_methods.experiment_small_model_select_points(model=model, configs=configs, experiment_configs=experiment_configs)
 
 
 
