@@ -1,7 +1,9 @@
 *.pyc
-result
-pw.hpcc.brandeis
-pw.hpcc.brandeis.pub
+checkpoints
+experiment_save_results
+task_num.txt
+remote_task_num.txt
+local
 *.sh
 .ssh
 aid
