@@ -1,0 +1,51 @@
+experiment_task_num: 1 # tell experiment method which task part to execute
+experiment_result_dir: ../save/experiment_save_results # the path for experiments to save results
+
+##### Individual experiment configs #####
+experiment_predict_distribution:
+    precent_to_keep: 0.7
+#########################################
+experiment_possible_higher_accuracy:
+  # all task
+  eva_sets:
+    - test
+    - valid
+  num_whole_data_accuracies_task: 1
+  # small_model_performance_task
+  num_small_model_performance_task: 100
+  remain_percents:
+    - 0.1
+    - 0.05
+
+#########################################
+experiment_small_model_select_points:
+  # all task
+  performance_eva_sets:
+    - test
+    - valid
+  num_whole_data_accuracies_task: 1
+  # rand_model_task
+  num_rand_model_task: 100
+  rand_remain_percent: 0.1
+  # rand_model_inf_task
+  max_data_points_num_to_calculate: 5000
+  inf_eva_set: test
+  # selected_model
+  num_combined_inf: 1
+  data_selecting_method: mean # mean or vote
+  select_remain_percent: 0.1
+
+#########################################
+experiment_small_model_based_big_model:
+  performance_eva_sets:
+    - test
+    - valid
+  # influence value on all data
+  max_data_points_num_to_calculate: 5000
+  inf_eva_set: test
+  # selected small model
+  remain_percent: 0.1
+
+#########################################
+experiment_remove_all_negtive: 
+  None: null
