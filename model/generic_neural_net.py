@@ -21,12 +21,18 @@ class Model():
         else:
             self.device = torch.device('cpu')
         
+        model_configs = kwargs.pop('model_configs')
         if basic_configs['model'] == 'MF':
-            self.model = MF(model_configs=kwargs.pop('model_configs'))
+            model_configs['num_users'] = int(np.max(self.dataset['train'].x[:, 0]) + 1)
+            model_configs['num_items'] = int(np.max(self.dataset['train'].x[:, 1]) + 1)
+            self.model = MF(model_configs=model_configs)
         elif basic_configs['model'] == 'NCF':
-            self.model = NCF(model_configs=kwargs.pop('model_configs'))
+            model_configs['num_users'] = int(np.max(self.dataset['train'].x[:, 0]) + 1)
+            model_configs['num_items'] = int(np.max(self.dataset['train'].x[:, 1]) + 1)
+            self.model = NCF(model_configs=model_configs)
         elif basic_configs['model'] == 'lr':
-            self.model = lr(model_configs=kwargs.pop('model_configs'))
+            model_configs['input_elem'] = len(super.dataset['train'].x[0])
+            self.model = lr(model_configs=model_configs)
         else:
             assert NotImplementedError
 

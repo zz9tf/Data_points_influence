@@ -2,7 +2,6 @@
 This python file is used to save special methods in the research
 
 '''
-
 import torch
 import numpy as np
 import os

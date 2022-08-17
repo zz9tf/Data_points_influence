@@ -1,14 +1,14 @@
-from cProfile import label
 import sys
 sys.path.append('../../pytorchGenericNet')
 import numpy as np
 import pandas as pd
-from  load_data import load_data
+from  untils.load_data import load_data
 from model.generic_neural_net import Model
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
+from math import ceil
 
 # method
 def set_configs():
@@ -35,17 +35,17 @@ def set_configs():
     dataset = load_data(os.path.join(configs['datapath'], configs['dataset']))
     model_configs = {
             'MF': {
-                    'num_users': int(np.max(dataset['train'].x[:, 0]) + 1),
-                    'num_items': int(np.max(dataset['train'].x[:, 1]) + 1),
-                    'embedding_size': 16,
-                    'weight_decay': 1e-2 # l2 regularization term for training MF or NCF model
-                },
+                'num_users': int(np.max(dataset['train'].x[:, 0]) + 1),
+                'num_items': int(np.max(dataset['train'].x[:, 1]) + 1),
+                'embedding_size': 16,
+                'weight_decay': 1e-2 # l2 regularization term for training MF or NCF model
+            },
             'NCF' : {
-                    'num_users': int(np.max(dataset['train'].x[:, 0]) + 1),
-                    'num_items': int(np.max(dataset['train'].x[:, 1]) + 1),
-                    'embedding_size': 16,
-                    'weight_decay': 1e-2 # l2 regularization term for training MF or NCF model
-                },
+                'num_users': int(np.max(dataset['train'].x[:, 0]) + 1),
+                'num_items': int(np.max(dataset['train'].x[:, 1]) + 1),
+                'embedding_size': 16,
+                'weight_decay': 1e-2 # l2 regularization term for training MF or NCF model
+            },
             'lr' : {
                 'input_elem': len(dataset['train'].x[0])
             }
@@ -313,7 +313,7 @@ def read_experiment_small_model_select_points(read_configs):
     plt.legend()
     plt.show()
 
-def read_experiment_small_model_select_point_comparing_with_rand(read_configs):
+def read_experiment_small_model_select_points_comparing_with_rand(read_configs):
     model = read_configs['model']
     basic_acc = {'test': 0.7995, 'valid': 0.789}
     all_acc = []
@@ -384,14 +384,84 @@ def read_experiment_small_model_select_point_comparing_with_rand(read_configs):
     plt.legend()
     plt.show()
 
+def read_select_points_distribution_on_rand_and_higher_accuracy_and_select(read_configs):
+    model = read_configs['model']
+    acc_baseline = {'test': 0.7995, 'valid': 0.789}
+    all_rand_ids = np.array([])
+    all_select_ids = np.array([])
+    num_higher_rand_model = 0
+    all_higher_rand_ids = np.array([])
+    all_higher_select_ids = np.array([])
+
+    eva_type = 'test'
+    for model_id in range(100, 0, -1):
+        # random model
+        model.load_model("rand{}_num600___churn_lr_wd1e-02_step30000".format(model_id))
+        all_rand_ids = np.append(all_rand_ids, model.remain_ids)
+        
+        eva_x, eva_y = model.np2tensor(model.dataset[eva_type].get_batch())
+        eva_diff = model.model(eva_x) - eva_y
+        random_acc = len(eva_diff[torch.abs(eva_diff)<0.5])/len(eva_diff)
+        if random_acc > acc_baseline[eva_type]:
+            num_higher_rand_model += 1
+            all_higher_rand_ids = np.append(all_higher_rand_ids, model.remain_ids)
+            
+
+        # select model
+        model.load_model("select{}_num600___churn_lr_wd1e-02_step30000".format(model_id))
+        all_select_ids = np.append(all_select_ids, model.remain_ids)
+
+        if random_acc > acc_baseline[eva_type]: # select ids correspond to random model which has higher accuracy
+            all_higher_select_ids = np.append(all_higher_select_ids, model.remain_ids)
+
+    infs = np.array([])
+    # big model influence value
+    for i in range(1, 3):
+        infs_file = r'c:\Users\Zheng\PycharmProjects\pythonProject\research\influence impact\pytorchGenericNet\experiment_save_results\churn_infs\{}-2.npz'.format(i)
+        infs = np.append(infs, np.load(infs_file)['infs'])
+
+    dist = {}
+    dist['sample id'] = np.arange(model.dataset['train'].x.shape[0], 0, -1)
+    dist['random-all'] = np.array([])
+    dist['select-all'] = np.array([])
+    dist['random-higher'] = np.array([])
+    dist['select-higher'] = np.array([])
+    for sample_id in dist['sample id']:
+        dist['random-all'] = np.append(dist['random-all'], np.count_nonzero(all_rand_ids == sample_id)/100)
+        dist['select-all'] = np.append(dist['select-all'], np.count_nonzero(all_select_ids == sample_id)/100)
+        dist['random-higher'] = np.append(dist['random-higher'], np.count_nonzero(all_higher_rand_ids == sample_id)/num_higher_rand_model)
+        dist['select-higher'] = np.append(dist['select-higher'], np.count_nonzero(all_higher_select_ids == sample_id)/num_higher_rand_model)
+    
+    # sorted_id = np.argsort(-dist['random-higher'])
+    sorted_id = np.argsort(-infs)
+    infs = infs[sorted_id]
+    dist['random-all'] = dist['random-all'][sorted_id]
+    dist['select-all'] = dist['select-all'][sorted_id]
+    dist['random-higher'] = dist['random-higher'][sorted_id]
+    dist['select-higher'] = dist['select-higher'][sorted_id]
+
+    for type in ['random-all', 'select-all', 'random-higher', 'select-higher']:
+        plt.plot(dist[type], dist['sample id'])
+        plt.title(type)
+        plt.ylabel('sample id')
+        plt.xlabel('sample point frequency')
+        plt.show()
+    
+    plt.plot(infs, dist['sample id'])
+    plt.title('big model')
+    plt.ylabel('sample id')
+    plt.xlabel('influence value')
+    plt.show()
+
+
 read_configs = set_configs()
-# read_correlation(read_configs)
+# read_experiment_get_correlation(read_configs)
 # read_remove_all_negtive(read_configs)
 # read_inf_variance_change_with_randTime(read_configs)
 # read_inf_variance_acc_experiment_predict_distribution(read_configs)
 # read_inf_variance_1by1_distribution(read_configs)
 # read_inf_variance_distribution(read_configs)
-# read_performance(read_configs)
-# read_performance_focus_on_higher_accuracy(read_configs) ### Not finish yet
-read_experiment_small_model_select_points(read_configs)
-# read_experiment_small_model_select_point_comparing_with_rand(read_configs)
+# read_experiment_possible_higher_accuracy(read_configs)
+# read_experiment_small_model_select_points(read_configs)
+# read_experiment_small_model_select_points_comparing_with_rand(read_configs)
+read_select_points_distribution_on_rand_and_higher_accuracy_and_select(read_configs)

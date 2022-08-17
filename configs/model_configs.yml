@@ -1,0 +1,27 @@
+# data
+dataset: churn # name of dataset: movielens, yelp, census_income, churn, fraud_detection
+datapath: data
+
+# model
+model: lr # The model to be used (Now you have: MF or NCF or lr)
+checkpoint_dir: checkpoints
+
+# train configs
+batch_size: 2048 # the batch_size for training or predict, None for not to use batch
+learning_rate: 1.0e-4 # initial learning rate for the training model
+weight_decay: 1.0e-2 # l2 regularization term for the training model
+num_epoch_train: 30000 # The training steps for the training model
+load_checkpoint: False # whether loading previous model if it exists'
+save_checkpoint: False # whether saving the current model
+visualize_loss: False # if plot the figure of train loss and test loss
+
+# Individual model configs
+model_configs:
+  MF:
+    embedding_size: 16
+    weight_decay: 1.0e-2 # l2 regularization term for training MF or NCF model
+  NCF:
+    embedding_size: 16
+    weight_decay: 1.0e-2 # l2 regularization term for training MF or NCF model
+  lr:
+    null

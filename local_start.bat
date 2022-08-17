@@ -12,7 +12,7 @@ set task_end_num=4
 Rem ################# Run local #################
 :run_exp
     mkdir "local/console"
-    echo. > local/task_num.txt
+    echo. > local/local_task_num.txt
 
     set /a i=%task_start_num%
     :for_loop_run_task
